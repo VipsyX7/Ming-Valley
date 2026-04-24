@@ -1,99 +1,54 @@
-using System.Collections;
-using System.Collections.Generic;
 using UnityEngine;
 
 public class BlockCircle : MonoBehaviour
 {
-    //起始旋转
-    public Transform rotateStart;
+    public Transform rotationAxisObject; // 空物体确定旋转轴
+    public Vector3 rotationAxis = Vector3.up; // 默认Y轴
+    public float snapAngle = 45f; // 吸附角度
+    public float smoothSpeed = 10f; // 平滑旋转速度
 
-    //目标旋转
-    public Transform rotateEnd;
-
-    //旋转进度
-    [Range(0f, 1f)]
-    public float t = 0f;
-
-    //旋转速度
-    public float rotateSpeed = 2f;
-
-    // 吸附点
-    public float[] snapPoints;
-
-    public float snapThreshold = 0.05f;
-    public float snapSpeed = 10f;
-
-    private bool isDragging = false;
-    private Camera cam;
+    private bool dragging = false;
+    private Vector3 lastMousePos;
+    private Quaternion targetRotation;
 
     void Start()
     {
-        cam = Camera.main;
-        UpdateRotation();
+        targetRotation = transform.rotation;
+    }
+
+    void OnMouseDown()
+    {
+        dragging = true;
+        lastMousePos = Input.mousePosition;
+    }
+
+    void OnMouseUp()
+    {
+        dragging = false;
+        SnapRotation();
     }
 
     void Update()
     {
-        MouseCheck();
-
-        if (isDragging)
+        if (dragging)
         {
-            Drag();
+            Vector3 mouseDelta = Input.mousePosition - lastMousePos;
+            float rotateAmount = mouseDelta.x; // 鼠标左右控制旋转
+            transform.RotateAround(rotationAxisObject.position, rotationAxis, rotateAmount * 0.5f);
+            lastMousePos = Input.mousePosition;
+            targetRotation = transform.rotation; // 拖拽中持续更新目标旋转
         }
 
-        Snap();
-        UpdateRotation();
+        // 平滑旋转
+        transform.rotation = Quaternion.Slerp(transform.rotation, targetRotation, Time.deltaTime * smoothSpeed);
     }
 
-    void MouseCheck()
+    void SnapRotation()
     {
-        if (Input.GetMouseButtonDown(0))
-        {
-            Ray ray = cam.ScreenPointToRay(Input.mousePosition);
-            RaycastHit hit;
-
-            if (Physics.Raycast(ray, out hit))
-            {
-                if (hit.transform == transform)
-                {
-                    isDragging = true;
-                }
-            }
-        }
-
-        if (Input.GetMouseButtonUp(0))
-        {
-            isDragging = false;
-        }
-    }
-
-    void Drag()
-    {
-        float mouseX = Input.GetAxis("Mouse X");
-
-        t += mouseX * rotateSpeed * Time.deltaTime;
-        t = Mathf.Clamp01(t);
-    }
-
-    void UpdateRotation()
-    {
-        transform.rotation = Quaternion.Lerp(
-            rotateStart.rotation,
-            rotateEnd.rotation,
-            t
-        );
-    }
-
-    void Snap()
-    {
-        if (snapPoints == null) return;
-
-        foreach (float point in snapPoints)
-        {
-            if (Mathf.Abs(t - point) < snapThreshold)
-            {
-                t = Mathf.Lerp(t, point, snapSpeed * Time.deltaTime);
-            }
-        }
+        Vector3 angles = transform.eulerAngles;
+        angles.x = Mathf.Round(angles.x / snapAngle) * snapAngle;
+        angles.y = Mathf.Round(angles.y / snapAngle) * snapAngle;
+        angles.z = Mathf.Round(angles.z / snapAngle) * snapAngle;
+        targetRotation = Quaternion.Euler(angles);
     }
 }
