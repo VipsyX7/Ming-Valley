@@ -491,7 +491,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   rotationAxisObject: {fileID: 1289375510}
   rotationAxis: {x: 0, y: 1, z: 0}
-  snapAngle: 45
+  snapAngle: 90
   smoothSpeed: 10
 --- !u!54 &182452977
 Rigidbody:
