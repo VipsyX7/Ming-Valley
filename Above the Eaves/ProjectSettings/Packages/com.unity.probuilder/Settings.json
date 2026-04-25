@@ -125,11 +125,15 @@
                 "type": "UnityEngine.Vector3, UnityEngine.CoreModule, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null",
                 "key": "ShapeBuilder.LastSize",
 <<<<<<< HEAD
+<<<<<<< HEAD
 <<<<<<< Updated upstream
                 "value": "{\"m_Value\":{\"x\":-8.0,\"y\":8.0,\"z\":6.0}}"
 =======
                 "value": "{\"m_Value\":{\"x\":-4.0,\"y\":6.0,\"z\":4.0}}"
 >>>>>>> Stashed changes
+=======
+                "value": "{\"m_Value\":{\"x\":4.0,\"y\":8.0,\"z\":4.0}}"
+>>>>>>> db23641270409c3b5918eb45af122bc54ef0c70e
 =======
                 "value": "{\"m_Value\":{\"x\":4.0,\"y\":8.0,\"z\":4.0}}"
 >>>>>>> db23641270409c3b5918eb45af122bc54ef0c70e
