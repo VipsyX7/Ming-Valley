@@ -1,29 +1,83 @@
 using UnityEngine;
 
-public class BlockCircle : MonoBehaviour
+public class BlockCircleAutoAxis : MonoBehaviour
 {
-    public Transform rotationAxisObject; // 空物体确定旋转轴
-    public Vector3 rotationAxis = Vector3.up; // 默认Y轴
-    public float snapAngle = 45f; // 每次点击旋转角度
-    public float smoothSpeed = 10f; // 平滑旋转速度
+    public enum AxisType
+    {
+        X, Y, Z
+    }
 
-    private Quaternion targetRotation;
+    [Header("旋转设置")]
+    public AxisType axisType = AxisType.Y; // 勾选旋转轴
+    public float snapAngle = 45f;
+    public float smoothSpeed = 10f;
+
+    private Vector3 pivotPoint;      // 几何中心
+    private Vector3 rotationAxis;    // 实际旋转轴
+
+    private float currentAngle = 0f;
+    private float targetAngle = 0f;
 
     void Start()
     {
-        targetRotation = transform.rotation;
+        CalculateBoundsCenter();
+        UpdateAxis();
+    }
+
+    void CalculateBoundsCenter()
+    {
+        Renderer[] renders = GetComponentsInChildren<Renderer>();
+
+        if (renders.Length == 0)
+        {
+            pivotPoint = transform.position;
+            return;
+        }
+
+        Bounds bounds = renders[0].bounds;
+
+        foreach (Renderer r in renders)
+        {
+            bounds.Encapsulate(r.bounds);
+        }
+
+        pivotPoint = bounds.center;
+    }
+
+    void UpdateAxis()
+    {
+        switch (axisType)
+        {
+            case AxisType.X:
+                rotationAxis = Vector3.right; // 垂直YZ平面
+                break;
+            case AxisType.Y:
+                rotationAxis = Vector3.up;    // 垂直XZ平面
+                break;
+            case AxisType.Z:
+                rotationAxis = Vector3.forward; // 垂直XY平面
+                break;
+        }
     }
 
     void OnMouseDown()
     {
-        // 点击时增加旋转角度
-        Quaternion rotationStep = Quaternion.AngleAxis(snapAngle, rotationAxis);
-        targetRotation = rotationStep * targetRotation;
+        targetAngle += snapAngle;
     }
 
     void Update()
     {
-        // 平滑旋转到目标旋转
-        transform.rotation = Quaternion.Slerp(transform.rotation, targetRotation, Time.deltaTime * smoothSpeed);
+        // 重新计算（防止物体结构动态变化）
+        CalculateBoundsCenter();
+        UpdateAxis();
+
+        // 平滑角度
+        currentAngle = Mathf.Lerp(currentAngle, targetAngle, Time.deltaTime * smoothSpeed);
+
+        // 每帧旋转差值
+        float delta = currentAngle - transform.localEulerAngles.magnitude;
+
+        // 正确绕中心旋转
+        transform.RotateAround(pivotPoint, rotationAxis, delta);
     }
 }

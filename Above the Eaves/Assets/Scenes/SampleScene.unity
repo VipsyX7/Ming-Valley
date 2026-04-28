@@ -801,7 +801,11 @@ Transform:
   m_GameObject: {fileID: 108535256}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+<<<<<<< HEAD
   m_LocalPosition: {x: -129.5, y: 17, z: -183}
+=======
+  m_LocalPosition: {x: -129, y: 17, z: -183}
+>>>>>>> a87c759cefe0d7762d31bb9eb892545fb0b56304
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
@@ -818,7 +822,7 @@ Rigidbody:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 108535256}
   serializedVersion: 4
-  m_Mass: 0.0000001
+  m_Mass: 1
   m_Drag: 0
   m_AngularDrag: 0.05
   m_CenterOfMass: {x: 0, y: 0, z: 0}
@@ -849,8 +853,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 7a98f7147534ad24db2b1b4fac96591a, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  rotationAxisObject: {fileID: 1012659503}
-  rotationAxis: {x: 0, y: 1, z: 0}
+  axisType: 1
   snapAngle: 90
   smoothSpeed: 10
 --- !u!1 &182452969
@@ -1220,8 +1223,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 7a98f7147534ad24db2b1b4fac96591a, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  rotationAxisObject: {fileID: 1289375510}
-  rotationAxis: {x: 0, y: 1, z: 0}
+  axisType: 1
   snapAngle: 90
   smoothSpeed: 10
 --- !u!54 &182452977
@@ -4120,8 +4122,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 7a98f7147534ad24db2b1b4fac96591a, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  rotationAxisObject: {fileID: 0}
-  rotationAxis: {x: 0, y: 1, z: 0}
+  axisType: 1
   snapAngle: 45
   smoothSpeed: 10
 --- !u!4 &622988007
@@ -7178,7 +7179,11 @@ Transform:
   m_GameObject: {fileID: 1012659502}
   serializedVersion: 2
   m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
+<<<<<<< HEAD
   m_LocalPosition: {x: 1.5, y: -15, z: 2.5}
+=======
+  m_LocalPosition: {x: 2, y: -25, z: 3}
+>>>>>>> a87c759cefe0d7762d31bb9eb892545fb0b56304
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
