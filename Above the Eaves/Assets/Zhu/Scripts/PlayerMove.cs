@@ -10,6 +10,12 @@ public class PlayerMove : MonoBehaviour
     [SerializeField] private float checkpointNeighborRadius = 2.5f;
     [SerializeField] private bool use2DPhysics = true;
     [SerializeField] private bool showDebugLog = true;
+
+    [Header("Click SFX")]
+    [SerializeField] private bool playClickSfx = true;
+    [SerializeField] private AudioClip clickSfx;
+    [SerializeField] private AudioSource clickAudioSource;
+
     [Header("Move")]
     [SerializeField] private float moveSpeed = 5f;
     [SerializeField] private float arriveDistance = 0.02f;
@@ -20,6 +26,16 @@ public class PlayerMove : MonoBehaviour
     private void Awake()
     {
         cachedCamera = Camera.main;
+
+        if (clickAudioSource == null)
+        {
+            clickAudioSource = GetComponent<AudioSource>();
+        }
+
+        if (clickAudioSource == null && clickSfx != null)
+        {
+            Debug.LogWarning("PlayerMove: 已配置 clickSfx，但当前物体没有 AudioSource。", this);
+        }
     }
 
     private void Update()
@@ -29,7 +45,28 @@ public class PlayerMove : MonoBehaviour
             return;
         }
 
+        PlayClickSfx();
         HandleMouseClick();
+    }
+
+    private void PlayClickSfx()
+    {
+        if (!playClickSfx || clickSfx == null)
+        {
+            return;
+        }
+
+        if (clickAudioSource == null)
+        {
+            // 兜底：如果没有手动指定 AudioSource，就尝试从挂载物体获取一次。
+            clickAudioSource = GetComponent<AudioSource>();
+            if (clickAudioSource == null)
+            {
+                return;
+            }
+        }
+
+        clickAudioSource.PlayOneShot(clickSfx);
     }
 
     private void HandleMouseClick()
