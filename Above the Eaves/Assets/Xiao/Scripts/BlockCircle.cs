@@ -7,13 +7,20 @@ public class BlockCircleAutoAxis : MonoBehaviour
         X, Y, Z
     }
 
-    [Header("ê˘??íu")]
-    public AxisType axisType = AxisType.Y; // å˘?ê˘??
+    [Header("?????u")]
+    public AxisType axisType = AxisType.Y; // ???????
     public float snapAngle = 45f;
     public float smoothSpeed = 10f;
 
-    private Vector3 pivotPoint;      // ô{âΩíÜêS
-    private Vector3 rotationAxis;    // ??ê˘??
+    [Header("Rotate SFX")]
+    [SerializeField] private bool playRotateSfx = true;
+    [SerializeField] private AudioClip rotateSfx;
+    [SerializeField] private AudioSource rotateAudioSource;
+    [SerializeField] private float rotateSfxCooldown = 0.08f;
+    private float lastRotateSfxTime = -Mathf.Infinity;
+
+    private Vector3 pivotPoint;      // ?{?????S
+    private Vector3 rotationAxis;    // ??????
 
     private float currentAngle = 0f;
     private float targetAngle = 0f;
@@ -22,6 +29,11 @@ public class BlockCircleAutoAxis : MonoBehaviour
     {
         CalculateBoundsCenter();
         UpdateAxis();
+
+        if (rotateAudioSource == null)
+        {
+            rotateAudioSource = GetComponent<AudioSource>();
+        }
     }
 
     void CalculateBoundsCenter()
@@ -49,13 +61,13 @@ public class BlockCircleAutoAxis : MonoBehaviour
         switch (axisType)
         {
             case AxisType.X:
-                rotationAxis = Vector3.right; // êÇíºYZïΩñ 
+                rotationAxis = Vector3.right; // ????YZ????
                 break;
             case AxisType.Y:
-                rotationAxis = Vector3.up;    // êÇíºXZïΩñ 
+                rotationAxis = Vector3.up;    // ????XZ????
                 break;
             case AxisType.Z:
-                rotationAxis = Vector3.forward; // êÇíºXYïΩñ 
+                rotationAxis = Vector3.forward; // ????XY????
                 break;
         }
     }
@@ -63,21 +75,30 @@ public class BlockCircleAutoAxis : MonoBehaviour
     void OnMouseDown()
     {
         targetAngle += snapAngle;
+
+        if (playRotateSfx && rotateSfx != null && rotateAudioSource != null)
+        {
+            if (Time.time - lastRotateSfxTime >= rotateSfxCooldown)
+            {
+                lastRotateSfxTime = Time.time;
+                rotateAudioSource.PlayOneShot(rotateSfx);
+            }
+        }
     }
 
     void Update()
     {
-        // èdêV?éZÅiñhé~ï®ëÃ?????âªÅj
+        // ?d?V??Z?i?h?~????????????j
         CalculateBoundsCenter();
         UpdateAxis();
 
-        // ïΩäääpìx
+        // ?????p?x
         currentAngle = Mathf.Lerp(currentAngle, targetAngle, Time.deltaTime * smoothSpeed);
 
-        // ??ê˘?ç∑?
+        // ????????
         float delta = currentAngle - transform.localEulerAngles.magnitude;
 
-        // ê≥??íÜêSê˘?
+        // ???????S???
         transform.RotateAround(pivotPoint, rotationAxis, delta);
     }
 }

@@ -4,6 +4,14 @@ using System.Collections.Generic;
 
 public class PlayerMove : MonoBehaviour
 {
+    private static bool sfxSuppressNextClick = false;
+
+    // BlockMove 选中/开始拖拽时会调用，用于屏蔽同一帧的点击音效。
+    public static void SuppressClickSfxNextClick()
+    {
+        sfxSuppressNextClick = true;
+    }
+
     [Header("Checkpoint Detect")]
     [SerializeField] private LayerMask checkpointLayer;
     [SerializeField] private float clickDetectRadius = 1.2f;
@@ -45,8 +53,54 @@ public class PlayerMove : MonoBehaviour
             return;
         }
 
-        PlayClickSfx();
         HandleMouseClick();
+    }
+
+    private bool ShouldPlayClickSfx()
+    {
+        if (sfxSuppressNextClick)
+        {
+            sfxSuppressNextClick = false;
+            return false;
+        }
+
+        // 若点击的是可拖拽物体（BlockMove），则不播放本脚本的点击音效。
+        if (IsClickOnBlockMoveObject())
+        {
+            return false;
+        }
+
+        return true;
+    }
+
+    private bool IsClickOnBlockMoveObject()
+    {
+        Camera cam = cachedCamera != null ? cachedCamera : Camera.main;
+        if (cam == null)
+        {
+            return false;
+        }
+
+        Ray ray = cam.ScreenPointToRay(Input.mousePosition);
+        const float maxDistance = 1000f;
+
+        // BlockMove 使用 OnMouseDown，因此通常是 3D Collider；这里优先做 3D 检测。
+        if (Physics.Raycast(ray, out RaycastHit hit3D, maxDistance))
+        {
+            if (hit3D.collider != null && hit3D.collider.GetComponentInParent<BlockMove>() != null)
+            {
+                return true;
+            }
+        }
+
+        // 兜底：如果场景里是 2D Collider，也尝试一次。
+        RaycastHit2D hit2D = Physics2D.GetRayIntersection(ray, maxDistance);
+        if (hit2D.collider != null && hit2D.collider.GetComponentInParent<BlockMove>() != null)
+        {
+            return true;
+        }
+
+        return false;
     }
 
     private void PlayClickSfx()
@@ -99,6 +153,13 @@ public class PlayerMove : MonoBehaviour
         }
 
         Log($"找到目标检查点B: {targetCheckpointB.name}，起始检查点A: {currentCheckpointA.name}");
+
+        // 只有当点击能够命中“可移动目标”（检查点B）并能找到起始检查点A时，才播放点击音效。
+        if (ShouldPlayClickSfx())
+        {
+            PlayClickSfx();
+        }
+
         StartMove(currentCheckpointA, targetCheckpointB);
     }
 
