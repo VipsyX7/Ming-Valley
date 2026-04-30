@@ -19,6 +19,13 @@ public class PlayerMove : MonoBehaviour
     [SerializeField] private bool use2DPhysics = true;
     [SerializeField] private bool showDebugLog = true;
 
+    [Header("Snap to Checkpoint")]
+    [SerializeField] private bool enableSnap = true;              // 是否启用吸附
+    [SerializeField] private float snapDistance = 0.1f;          // 吸附距离阈值
+    [SerializeField] private bool snapOnStart = true;            // 开始时吸附到最近检查点
+    [SerializeField] private bool snapOnArrive = true;           // 到达检查点时吸附
+    [SerializeField] private bool followMovingCheckpoint = true; // 跟随移动的检查点
+
     [Header("Click SFX")]
     [SerializeField] private bool playClickSfx = true;
     [SerializeField] private AudioClip clickSfx;
@@ -30,6 +37,11 @@ public class PlayerMove : MonoBehaviour
 
     private Camera cachedCamera;
     private Coroutine moveCoroutine;
+
+    // 记录当前吸附的检查点
+    private Transform currentSnappedCheckpoint;
+    // 记录检查点上一帧的位置（用于跟随移动）
+    private Vector3 lastCheckpointPosition;
 
     private void Awake()
     {
@@ -46,14 +58,112 @@ public class PlayerMove : MonoBehaviour
         }
     }
 
+    private void Start()
+    {
+        // 游戏开始时吸附到最近的检查点
+        if (enableSnap && snapOnStart)
+        {
+            SnapToNearestCheckpoint();
+        }
+    }
+
     private void Update()
     {
+        // 如果启用了跟随移动的检查点，且当前吸附在某个检查点上
+        if (followMovingCheckpoint && currentSnappedCheckpoint != null)
+        {
+            // 检测检查点是否移动了
+            if (currentSnappedCheckpoint.position != lastCheckpointPosition)
+            {
+                // 跟随检查点移动
+                transform.position = currentSnappedCheckpoint.position;
+                lastCheckpointPosition = currentSnappedCheckpoint.position;
+                Log($"跟随检查点 {currentSnappedCheckpoint.name} 移动到: {transform.position}");
+            }
+            else
+            {
+                // 更新记录的位置
+                lastCheckpointPosition = currentSnappedCheckpoint.position;
+            }
+        }
+
         if (!Input.GetMouseButtonDown(0))
         {
             return;
         }
 
         HandleMouseClick();
+    }
+
+    /// <summary>
+    /// 将人物吸附到最近的检查点
+    /// </summary>
+    /// <returns>是否成功吸附</returns>
+    public bool SnapToNearestCheckpoint()
+    {
+        Transform nearestCheckpoint = FindNearestCheckpoint(transform.position, snapDistance, null);
+
+        if (nearestCheckpoint != null)
+        {
+            transform.position = nearestCheckpoint.position;
+            SetSnappedCheckpoint(nearestCheckpoint);
+            Log($"吸附到检查点: {nearestCheckpoint.name}");
+            return true;
+        }
+
+        // 如果阈值内没有检查点，尝试用更大的搜索半径
+        Transform distantCheckpoint = FindNearestCheckpoint(transform.position, checkpointNeighborRadius, null);
+        if (distantCheckpoint != null)
+        {
+            transform.position = distantCheckpoint.position;
+            SetSnappedCheckpoint(distantCheckpoint);
+            Log($"吸附到检查点（扩展搜索）: {distantCheckpoint.name}");
+            return true;
+        }
+
+        Log("没有找到可吸附的检查点");
+        return false;
+    }
+
+    /// <summary>
+    /// 将人物吸附到指定的检查点
+    /// </summary>
+    public void SnapToCheckpoint(Transform checkpoint)
+    {
+        if (checkpoint == null) return;
+
+        transform.position = checkpoint.position;
+        SetSnappedCheckpoint(checkpoint);
+        Log($"吸附到指定检查点: {checkpoint.name}");
+    }
+
+    /// <summary>
+    /// 设置当前吸附的检查点
+    /// </summary>
+    private void SetSnappedCheckpoint(Transform checkpoint)
+    {
+        currentSnappedCheckpoint = checkpoint;
+        if (checkpoint != null)
+        {
+            lastCheckpointPosition = checkpoint.position;
+        }
+    }
+
+    /// <summary>
+    /// 清除当前吸附的检查点
+    /// </summary>
+    public void ClearSnappedCheckpoint()
+    {
+        currentSnappedCheckpoint = null;
+        Log("清除检查点吸附");
+    }
+
+    /// <summary>
+    /// 获取当前吸附的检查点
+    /// </summary>
+    public Transform GetCurrentSnappedCheckpoint()
+    {
+        return currentSnappedCheckpoint;
     }
 
     private bool ShouldPlayClickSfx()
@@ -154,7 +264,7 @@ public class PlayerMove : MonoBehaviour
 
         Log($"找到目标检查点B: {targetCheckpointB.name}，起始检查点A: {currentCheckpointA.name}");
 
-        // 只有当点击能够命中“可移动目标”（检查点B）并能找到起始检查点A时，才播放点击音效。
+        // 只有当点击能够命中"可移动目标"（检查点B）并能找到起始检查点A时，才播放点击音效。
         if (ShouldPlayClickSfx())
         {
             PlayClickSfx();
@@ -185,6 +295,13 @@ public class PlayerMove : MonoBehaviour
         while (current != null && step < maxSteps)
         {
             yield return MoveToPosition(current.position);
+
+            // 到达检查点后，吸附到该检查点
+            if (enableSnap && snapOnArrive)
+            {
+                SnapToCheckpoint(current);
+            }
+
             visited.Add(current);
             Log($"Step {step}: 移动到 {current.name}");
 
