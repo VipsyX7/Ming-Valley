@@ -14,8 +14,13 @@ public class PlayerMove : MonoBehaviour
 
     [Header("Checkpoint Detect")]
     [SerializeField] private LayerMask checkpointLayer;
-    [SerializeField] private float clickDetectRadius = 1.2f;
-    [SerializeField] private float checkpointNeighborRadius = 2.5f;
+    [SerializeField] private bool useCameraRenderDistance = true;
+    [SerializeField] private float clickDetectRadiusWorld = 1.2f;
+    [SerializeField] private float checkpointNeighborRadiusWorld = 2.5f;
+    [Tooltip("Viewport 半径，范围通常在 0~1。用于点击命中检查点。")]
+    [SerializeField] private float clickDetectRadiusRender = 0.08f;
+    [Tooltip("Viewport 半径，范围通常在 0~1。用于检查点邻接与瞬移判定。")]
+    [SerializeField] private float checkpointNeighborRadiusRender = 0.12f;
     [SerializeField] private bool use2DPhysics = true;
     [SerializeField] private bool showDebugLog = true;
 
@@ -138,14 +143,14 @@ public class PlayerMove : MonoBehaviour
 
         Vector3 clickWorldPos = GetMouseWorldPosition(cachedCamera);
 
-        Transform targetCheckpointB = FindNearestCheckpoint(clickWorldPos, clickDetectRadius, null);
+        Transform targetCheckpointB = FindNearestCheckpoint(clickWorldPos, GetClickDetectRadius(), null);
         if (targetCheckpointB == null)
         {
             Log($"点击位置附近没有检查点，点击世界坐标: {clickWorldPos}");
             return;
         }
 
-        Transform currentCheckpointA = FindNearestCheckpoint(transform.position, checkpointNeighborRadius, null);
+        Transform currentCheckpointA = FindNearestCheckpoint(transform.position, GetCheckpointNeighborRadius(), null);
         if (currentCheckpointA == null)
         {
             Log("玩家附近没有起始检查点A，无法开始移动。");
@@ -197,7 +202,7 @@ public class PlayerMove : MonoBehaviour
 
             Transform next = FindBestNeighbor(
                 current.position,
-                checkpointNeighborRadius,
+                GetCheckpointNeighborRadius(),
                 previous,
                 current,
                 targetCheckpoint,
@@ -205,6 +210,13 @@ public class PlayerMove : MonoBehaviour
 
             if (next == null)
             {
+                if (TryTeleportByRenderDistance(current, targetCheckpoint))
+                {
+                    Log("屏幕渲染距离满足阈值，已瞬移到目标检查点。");
+                    moveCoroutine = null;
+                    yield break;
+                }
+
                 Log("当前检查点附近没有可前进的下一个检查点，移动结束。");
                 moveCoroutine = null;
                 yield break;
@@ -291,7 +303,9 @@ public class PlayerMove : MonoBehaviour
                 continue;
             }
 
-            float distSqr = (t.position - center).sqrMagnitude;
+            float distSqr = useCameraRenderDistance
+                ? GetViewportDistanceSqr(cachedCamera != null ? cachedCamera : Camera.main, t.position, center)
+                : (t.position - center).sqrMagnitude;
             if (distSqr < minDistSqr)
             {
                 minDistSqr = distSqr;
@@ -328,6 +342,11 @@ public class PlayerMove : MonoBehaviour
 
     private Transform[] GetCheckpointsInRadius(Vector3 center, float radius)
     {
+        if (useCameraRenderDistance)
+        {
+            return GetCheckpointsInRenderRadius(center, radius);
+        }
+
         if (use2DPhysics)
         {
             Collider2D[] hits = Physics2D.OverlapCircleAll(center, radius, checkpointLayer);
@@ -348,6 +367,158 @@ public class PlayerMove : MonoBehaviour
             }
             return result;
         }
+    }
+
+    private Transform[] GetCheckpointsInRenderRadius(Vector3 center, float radius)
+    {
+        Camera cam = cachedCamera != null ? cachedCamera : Camera.main;
+        if (cam == null)
+        {
+            return new Transform[0];
+        }
+
+        float maxSqr = radius * radius;
+        List<Transform> result = new List<Transform>();
+        Transform[] checkpoints = GetAllCheckpointsByLayer();
+
+        Vector3 centerVp = cam.WorldToViewportPoint(center);
+        bool centerBehindCamera = centerVp.z <= 0f;
+        if (centerBehindCamera)
+        {
+            return new Transform[0];
+        }
+
+        for (int i = 0; i < checkpoints.Length; i++)
+        {
+            Transform t = checkpoints[i];
+            if (t == null)
+            {
+                continue;
+            }
+
+            Vector3 vp = cam.WorldToViewportPoint(t.position);
+            if (vp.z <= 0f)
+            {
+                continue;
+            }
+
+            float dx = vp.x - centerVp.x;
+            float dy = vp.y - centerVp.y;
+            float distSqr = dx * dx + dy * dy;
+            if (distSqr <= maxSqr)
+            {
+                result.Add(t);
+            }
+        }
+
+        return result.ToArray();
+    }
+
+    private Transform[] GetAllCheckpointsByLayer()
+    {
+        List<Transform> result = new List<Transform>();
+        HashSet<Transform> unique = new HashSet<Transform>();
+
+        if (use2DPhysics)
+        {
+            Collider2D[] all2D = FindObjectsByType<Collider2D>(FindObjectsSortMode.None);
+            for (int i = 0; i < all2D.Length; i++)
+            {
+                Collider2D c = all2D[i];
+                if (c == null || !IsInLayerMask(c.gameObject.layer, checkpointLayer))
+                {
+                    continue;
+                }
+
+                Transform t = c.transform;
+                if (unique.Add(t))
+                {
+                    result.Add(t);
+                }
+            }
+        }
+        else
+        {
+            Collider[] all3D = FindObjectsByType<Collider>(FindObjectsSortMode.None);
+            for (int i = 0; i < all3D.Length; i++)
+            {
+                Collider c = all3D[i];
+                if (c == null || !IsInLayerMask(c.gameObject.layer, checkpointLayer))
+                {
+                    continue;
+                }
+
+                Transform t = c.transform;
+                if (unique.Add(t))
+                {
+                    result.Add(t);
+                }
+            }
+        }
+
+        return result.ToArray();
+    }
+
+    private bool TryTeleportByRenderDistance(Transform currentCheckpoint, Transform targetCheckpoint)
+    {
+        if (!useCameraRenderDistance || currentCheckpoint == null || targetCheckpoint == null)
+        {
+            return false;
+        }
+
+        Camera cam = cachedCamera != null ? cachedCamera : Camera.main;
+        if (cam == null)
+        {
+            return false;
+        }
+
+        float renderDistSqr = GetViewportDistanceSqr(cam, currentCheckpoint.position, targetCheckpoint.position);
+        float renderThreshold = checkpointNeighborRadiusRender;
+        float renderThresholdSqr = renderThreshold * renderThreshold;
+        if (renderDistSqr > renderThresholdSqr)
+        {
+            return false;
+        }
+
+        float worldDistSqr = (currentCheckpoint.position - targetCheckpoint.position).sqrMagnitude;
+        float worldThreshold = checkpointNeighborRadiusWorld;
+        float worldThresholdSqr = worldThreshold * worldThreshold;
+        if (worldDistSqr <= worldThresholdSqr)
+        {
+            return false;
+        }
+
+        transform.position = targetCheckpoint.position;
+        return true;
+    }
+
+    private static float GetViewportDistanceSqr(Camera cam, Vector3 a, Vector3 b)
+    {
+        Vector3 aVp = cam.WorldToViewportPoint(a);
+        Vector3 bVp = cam.WorldToViewportPoint(b);
+        if (aVp.z <= 0f || bVp.z <= 0f)
+        {
+            return float.MaxValue;
+        }
+
+        float dx = aVp.x - bVp.x;
+        float dy = aVp.y - bVp.y;
+        return dx * dx + dy * dy;
+    }
+
+    private static bool IsInLayerMask(int layer, LayerMask mask)
+    {
+        return (mask.value & (1 << layer)) != 0;
+    }
+
+    private float GetClickDetectRadius()
+    {
+        return useCameraRenderDistance ? clickDetectRadiusRender : clickDetectRadiusWorld;
+    }
+
+    private float GetCheckpointNeighborRadius()
+    {
+        return useCameraRenderDistance ? checkpointNeighborRadiusRender : checkpointNeighborRadiusWorld;
     }
 
     private void Log(string msg)
