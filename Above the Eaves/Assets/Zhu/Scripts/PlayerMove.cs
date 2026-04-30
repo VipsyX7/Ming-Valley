@@ -117,7 +117,7 @@ public class PlayerMove : MonoBehaviour
         }
 
         // 如果阈值内没有检查点，尝试用更大的搜索半径
-        Transform distantCheckpoint = FindNearestCheckpoint(transform.position, checkpointNeighborRadius, null);
+        Transform distantCheckpoint = FindNearestCheckpoint(transform.position, GetCheckpointNeighborRadius(), null);
         if (distantCheckpoint != null)
         {
             transform.position = distantCheckpoint.position;
