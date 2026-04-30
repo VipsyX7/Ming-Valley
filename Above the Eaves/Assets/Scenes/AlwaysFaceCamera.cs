@@ -22,7 +22,7 @@ public class AlwaysFaceCamera : MonoBehaviour
     [SerializeField] private Camera targetCamera;
 
     [Header("Options")]
-    [Tooltip("If enabled, only rotates around Y axis.")]
+    [Tooltip("If enabled, only rotates around Y axis when aligning to screen center.")]
     [SerializeField] private bool onlyRotateY = false;
 
     [Tooltip("Rotate an extra 180 degrees to flip forward direction.")]
@@ -47,7 +47,9 @@ public class AlwaysFaceCamera : MonoBehaviour
             return;
         }
 
-        Vector3 direction = cam.transform.position - transform.position;
+        // Screen-facing billboard: use inverse camera forward,
+        // so the object front is always visible on screen.
+        Vector3 direction = -cam.transform.forward;
 
         if (onlyRotateY)
         {
