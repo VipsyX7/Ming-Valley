@@ -1,87 +1,58 @@
 using UnityEngine;
 
 /// <summary>
-/// ?物体始?面向正交?像机（?用于2D游?、UI、血条等）
+/// Makes this object always face a target camera.
 /// </summary>
-public class FaceOrthographicCamera : MonoBehaviour
+[ExecuteAlways]
+public class AlwaysFaceCamera : MonoBehaviour
 {
-    [Header("?像机?置")]
-    [Tooltip("要面向的正交?像机，不填?自?找主?像机")]
-    public Camera targetCamera;
+    [Header("Target")]
+    [Tooltip("Camera to face. If null, Camera.main is used.")]
+    [SerializeField] private Camera targetCamera;
 
-    [Header("旋?模式")]
-    [Tooltip("true=只在水平面旋?（保持直立），false=完全面向?像机")]
-    public bool rotateOnlyOnY = true;
+    [Header("Options")]
+    [Tooltip("If enabled, only rotates around Y axis.")]
+    [SerializeField] private bool onlyRotateY = false;
 
-    [Tooltip("是否翻?（背面朝向?像机）")]
-    public bool flip = false;
-
-    [Tooltip("是否保持原始Z?旋?不?（如2D Sprite通常不需要旋?Z）")]
-    public bool preserveZRotation = true;
-
-    private void Start()
-    {
-        if (targetCamera == null)
-        {
-            targetCamera = Camera.main;
-            if (targetCamera == null)
-            {
-                Debug.LogError("未找到主?像机，?手?? " + gameObject.name + " 指定 targetCamera。");
-            }
-        }
-
-        // ???像机是否?正交模式
-        if (targetCamera != null && !targetCamera.orthographic)
-        {
-            Debug.LogWarning("警告：" + targetCamera.name + " 不是正交?像机，脚本可能表??常。");
-        }
-    }
+    [Tooltip("Rotate an extra 180 degrees to flip forward direction.")]
+    [SerializeField] private bool flip = false;
 
     private void LateUpdate()
     {
-        if (targetCamera == null) return;
-
-        Vector3 cameraPos = targetCamera.transform.position;
-        Vector3 myPos = transform.position;
-
-        if (rotateOnlyOnY)
+        Camera cam = ResolveCamera();
+        if (cam == null)
         {
-            // 只在Y?旋?：?算水平方向指向?像机
-            Vector3 directionToCamera = cameraPos - myPos;
-            directionToCamera.y = 0;  // 忽略高度差，保持直立
-
-            if (directionToCamera != Vector3.zero)
-            {
-                Quaternion targetRotation = Quaternion.LookRotation(directionToCamera);
-                if (flip) targetRotation *= Quaternion.Euler(0, 180, 0);
-
-                if (preserveZRotation)
-                {
-                    // 保留原始Z旋?（常用于2D Sprite）
-                    targetRotation = Quaternion.Euler(targetRotation.eulerAngles.x, targetRotation.eulerAngles.y, transform.eulerAngles.z);
-                }
-                transform.rotation = targetRotation;
-            }
+            return;
         }
-        else
+
+        Vector3 direction = cam.transform.position - transform.position;
+
+        if (onlyRotateY)
         {
-            // 完全面向?像机（包括俯仰）
-            Vector3 direction = cameraPos - myPos;
-            if (direction != Vector3.zero)
-            {
-                Quaternion targetRotation = Quaternion.LookRotation(direction);
-                if (flip) targetRotation *= Quaternion.Euler(0, 180, 0);
-                transform.rotation = targetRotation;
-            }
+            direction.y = 0f;
         }
+
+        if (direction.sqrMagnitude < 0.000001f)
+        {
+            return;
+        }
+
+        Quaternion look = Quaternion.LookRotation(direction.normalized, Vector3.up);
+        if (flip)
+        {
+            look *= Quaternion.Euler(0f, 180f, 0f);
+        }
+
+        transform.rotation = look;
     }
 
-    // 可?：在??器模式下也??更新（方便??）
-    private void OnDrawGizmosSelected()
+    private Camera ResolveCamera()
     {
-        if (targetCamera != null && Application.isPlaying == false)
+        if (targetCamera != null)
         {
-            LateUpdate();
+            return targetCamera;
         }
+
+        return Camera.main;
     }
 }
