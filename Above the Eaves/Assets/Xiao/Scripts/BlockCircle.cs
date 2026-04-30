@@ -24,6 +24,7 @@ public class BlockCircleAutoAxis : MonoBehaviour
 
     private float currentAngle = 0f;
     private float targetAngle = 0f;
+    private float lastAngle = 0f;
 
     void Start()
     {
@@ -86,19 +87,21 @@ public class BlockCircleAutoAxis : MonoBehaviour
         }
     }
 
+    
+
     void Update()
     {
-        // ?d?V??Z?i?h?~????????????j
         CalculateBoundsCenter();
         UpdateAxis();
 
-        // ?????p?x
+        // 平滑角度
         currentAngle = Mathf.Lerp(currentAngle, targetAngle, Time.deltaTime * smoothSpeed);
 
-        // ????????
-        float delta = currentAngle - transform.localEulerAngles.magnitude;
+        // 正确的 delta（只看我们自己记录的角度）
+        float delta = currentAngle - lastAngle;
 
-        // ???????S???
         transform.RotateAround(pivotPoint, rotationAxis, delta);
+
+        lastAngle = currentAngle;
     }
 }
