@@ -13,10 +13,12 @@ public class CameraMoving : MonoBehaviour
     [SerializeField] private Transform cameraTargetPoint;
     [SerializeField] private Vector3 cameraTargetEulerAngles;
     [SerializeField] private float smoothSpeed = 4f;
+    [SerializeField] private bool lockAfterFirstTrigger = true;
 
     private Vector3 originalPosition;
     private Quaternion originalRotation;
     private bool isTriggered;
+    private bool hasTriggeredOnce;
     private Collider selfCollider3D;
     private Collider2D selfCollider2D;
 
@@ -61,11 +63,21 @@ public class CameraMoving : MonoBehaviour
 
         if (useManualCheck)
         {
-            isTriggered = EvaluateManualTriggerState();
+            bool manualTriggered = EvaluateManualTriggerState();
+            if (manualTriggered)
+            {
+                isTriggered = true;
+                hasTriggeredOnce = true;
+            }
+            else if (!lockAfterFirstTrigger || !hasTriggeredOnce)
+            {
+                isTriggered = false;
+            }
         }
 
-        Vector3 desiredPosition = isTriggered ? cameraTargetPoint.position : originalPosition;
-        Quaternion desiredRotation = isTriggered
+        bool stayAtTarget = isTriggered || (lockAfterFirstTrigger && hasTriggeredOnce);
+        Vector3 desiredPosition = stayAtTarget ? cameraTargetPoint.position : originalPosition;
+        Quaternion desiredRotation = stayAtTarget
             ? Quaternion.Euler(cameraTargetEulerAngles)
             : originalRotation;
 
@@ -82,6 +94,7 @@ public class CameraMoving : MonoBehaviour
         }
 
         isTriggered = true;
+        hasTriggeredOnce = true;
         Log($"3D Enter: {other.name}");
     }
 
@@ -92,7 +105,10 @@ public class CameraMoving : MonoBehaviour
             return;
         }
 
-        isTriggered = false;
+        if (!lockAfterFirstTrigger || !hasTriggeredOnce)
+        {
+            isTriggered = false;
+        }
         Log($"3D Exit: {other.name}");
     }
 
@@ -104,6 +120,7 @@ public class CameraMoving : MonoBehaviour
         }
 
         isTriggered = true;
+        hasTriggeredOnce = true;
         Log($"2D Enter: {other.name}");
     }
 
@@ -114,7 +131,10 @@ public class CameraMoving : MonoBehaviour
             return;
         }
 
-        isTriggered = false;
+        if (!lockAfterFirstTrigger || !hasTriggeredOnce)
+        {
+            isTriggered = false;
+        }
         Log($"2D Exit: {other.name}");
     }
 
